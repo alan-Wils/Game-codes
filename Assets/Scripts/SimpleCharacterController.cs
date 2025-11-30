@@ -58,6 +58,19 @@ public class SimpleCharacterController : MonoBehaviour
     [Tooltip("Damping for smoothing the speed parameter updates.")]
     [SerializeField] private float speedDampTime = 0.1f;
 
+    [Tooltip("Optional bool parameter set true while the character is moving.")]
+    [SerializeField] private string walkingBoolParameter = "";
+
+    [Tooltip("Speed (m/s) above which the character is considered walking.")]
+    [SerializeField] private float walkSpeedThreshold = 0.1f;
+
+    [Header("Animation Triggers")]
+    [Tooltip("Optional trigger fired once when movement starts.")]
+    [SerializeField] private string startWalkingTrigger = "";
+
+    [Tooltip("Optional trigger fired once when movement stops.")]
+    [SerializeField] private string stopWalkingTrigger = "";
+
     [Header("Input")]
     [SerializeField] private KeyCode runKey = KeyCode.LeftShift;
     [SerializeField] private KeyCode jumpKey = KeyCode.Space;
@@ -66,6 +79,7 @@ public class SimpleCharacterController : MonoBehaviour
     private Vector3 velocity;
     private float pitch;
     private Vector3 cameraFollowVelocity;
+    private bool wasMoving;
 
     private void Awake()
     {
@@ -166,6 +180,33 @@ public class SimpleCharacterController : MonoBehaviour
 
         Vector3 planarVelocity = new Vector3(controller.velocity.x, 0f, controller.velocity.z);
         float speed = planarVelocity.magnitude;
-        animator.SetFloat(speedParameter, speed, speedDampTime, Time.deltaTime);
+
+        if (!string.IsNullOrEmpty(speedParameter))
+        {
+            animator.SetFloat(speedParameter, speed, speedDampTime, Time.deltaTime);
+        }
+
+        bool isMoving = speed > walkSpeedThreshold;
+
+        if (!string.IsNullOrEmpty(walkingBoolParameter))
+        {
+            animator.SetBool(walkingBoolParameter, isMoving);
+        }
+
+        if (isMoving != wasMoving)
+        {
+            if (isMoving && !string.IsNullOrEmpty(startWalkingTrigger))
+            {
+                animator.ResetTrigger(stopWalkingTrigger);
+                animator.SetTrigger(startWalkingTrigger);
+            }
+            else if (!isMoving && !string.IsNullOrEmpty(stopWalkingTrigger))
+            {
+                animator.ResetTrigger(startWalkingTrigger);
+                animator.SetTrigger(stopWalkingTrigger);
+            }
+
+            wasMoving = isMoving;
+        }
     }
 }
