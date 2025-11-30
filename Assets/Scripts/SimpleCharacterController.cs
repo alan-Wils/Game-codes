@@ -55,11 +55,17 @@ public class SimpleCharacterController : MonoBehaviour
     [Tooltip("Float parameter used to drive locomotion speed (e.g. a blend tree).")]
     [SerializeField] private string speedParameter = "Speed";
 
+    [Tooltip("Optional cached hash for the speed parameter.")]
+    [SerializeField, HideInInspector] private int speedParameterHash;
+
     [Tooltip("Damping for smoothing the speed parameter updates.")]
     [SerializeField] private float speedDampTime = 0.1f;
 
     [Tooltip("Optional bool parameter set true while the character is moving.")]
     [SerializeField] private string walkingBoolParameter = "";
+
+    [Tooltip("Optional cached hash for the walking bool parameter.")]
+    [SerializeField, HideInInspector] private int walkingBoolParameterHash;
 
     [Tooltip("Speed (m/s) above which the character is considered walking.")]
     [SerializeField] private float walkSpeedThreshold = 0.1f;
@@ -68,8 +74,14 @@ public class SimpleCharacterController : MonoBehaviour
     [Tooltip("Optional trigger fired once when movement starts.")]
     [SerializeField] private string startWalkingTrigger = "";
 
+    [Tooltip("Optional cached hash for the start walking trigger.")]
+    [SerializeField, HideInInspector] private int startWalkingTriggerHash;
+
     [Tooltip("Optional trigger fired once when movement stops.")]
     [SerializeField] private string stopWalkingTrigger = "";
+
+    [Tooltip("Optional cached hash for the stop walking trigger.")]
+    [SerializeField, HideInInspector] private int stopWalkingTriggerHash;
 
     [Header("Input")]
     [SerializeField] private KeyCode runKey = KeyCode.LeftShift;
@@ -90,6 +102,8 @@ public class SimpleCharacterController : MonoBehaviour
             animator = GetComponentInChildren<Animator>();
         }
 
+        CacheAnimatorHashes();
+
         if (cameraRoot == null && Camera.main != null)
         {
             cameraRoot = Camera.main.transform;
@@ -103,6 +117,11 @@ public class SimpleCharacterController : MonoBehaviour
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+    }
+
+    private void OnValidate()
+    {
+        CacheAnimatorHashes();
     }
 
     private void Update()
@@ -181,32 +200,48 @@ public class SimpleCharacterController : MonoBehaviour
         Vector3 planarVelocity = new Vector3(controller.velocity.x, 0f, controller.velocity.z);
         float speed = planarVelocity.magnitude;
 
-        if (!string.IsNullOrEmpty(speedParameter))
+        if (speedParameterHash != 0)
         {
-            animator.SetFloat(speedParameter, speed, speedDampTime, Time.deltaTime);
+            animator.SetFloat(speedParameterHash, speed, speedDampTime, Time.deltaTime);
         }
 
         bool isMoving = speed > walkSpeedThreshold;
 
-        if (!string.IsNullOrEmpty(walkingBoolParameter))
+        if (walkingBoolParameterHash != 0)
         {
-            animator.SetBool(walkingBoolParameter, isMoving);
+            animator.SetBool(walkingBoolParameterHash, isMoving);
         }
 
         if (isMoving != wasMoving)
         {
-            if (isMoving && !string.IsNullOrEmpty(startWalkingTrigger))
+            if (isMoving && startWalkingTriggerHash != 0)
             {
-                animator.ResetTrigger(stopWalkingTrigger);
-                animator.SetTrigger(startWalkingTrigger);
+                if (stopWalkingTriggerHash != 0)
+                {
+                    animator.ResetTrigger(stopWalkingTriggerHash);
+                }
+
+                animator.SetTrigger(startWalkingTriggerHash);
             }
-            else if (!isMoving && !string.IsNullOrEmpty(stopWalkingTrigger))
+            else if (!isMoving && stopWalkingTriggerHash != 0)
             {
-                animator.ResetTrigger(startWalkingTrigger);
-                animator.SetTrigger(stopWalkingTrigger);
+                if (startWalkingTriggerHash != 0)
+                {
+                    animator.ResetTrigger(startWalkingTriggerHash);
+                }
+
+                animator.SetTrigger(stopWalkingTriggerHash);
             }
 
             wasMoving = isMoving;
         }
+    }
+
+    private void CacheAnimatorHashes()
+    {
+        speedParameterHash = string.IsNullOrEmpty(speedParameter) ? 0 : Animator.StringToHash(speedParameter);
+        walkingBoolParameterHash = string.IsNullOrEmpty(walkingBoolParameter) ? 0 : Animator.StringToHash(walkingBoolParameter);
+        startWalkingTriggerHash = string.IsNullOrEmpty(startWalkingTrigger) ? 0 : Animator.StringToHash(startWalkingTrigger);
+        stopWalkingTriggerHash = string.IsNullOrEmpty(stopWalkingTrigger) ? 0 : Animator.StringToHash(stopWalkingTrigger);
     }
 }
