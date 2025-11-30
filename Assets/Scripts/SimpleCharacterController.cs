@@ -2,8 +2,9 @@ using UnityEngine;
 
 /// <summary>
 /// Basic first-person style character controller that uses Unity's CharacterController
-/// component for collision. Supports walking, running, jumping, gravity, and simple camera
-/// look controls driven by mouse input.
+/// component for collision. Supports walking, running, jumping, gravity, and camera look
+/// controls driven by mouse input. Can optionally drive a third-person follow camera that
+/// hovers behind the player.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class SimpleCharacterController : MonoBehaviour
@@ -34,6 +35,19 @@ public class SimpleCharacterController : MonoBehaviour
     [Tooltip("Clamp for vertical look (degrees).")]
     [SerializeField] private Vector2 verticalLookLimits = new Vector2(-80f, 80f);
 
+    [Header("Third-Person Camera")]
+    [Tooltip("Enable a hovering, third-person camera that follows behind the player.")]
+    [SerializeField] private bool useThirdPersonCamera = false;
+
+    [Tooltip("Local-space offset from the player when using the third-person camera.")]
+    [SerializeField] private Vector3 thirdPersonOffset = new Vector3(0f, 2f, -4f);
+
+    [Tooltip("Height above the player that the camera will look towards.")]
+    [SerializeField] private float thirdPersonLookHeight = 1.5f;
+
+    [Tooltip("Smooth time for camera follow (seconds).")]
+    [SerializeField] private float cameraFollowSmoothTime = 0.08f;
+
     [Header("Input")]
     [SerializeField] private KeyCode runKey = KeyCode.LeftShift;
     [SerializeField] private KeyCode jumpKey = KeyCode.Space;
@@ -41,6 +55,7 @@ public class SimpleCharacterController : MonoBehaviour
     private CharacterController controller;
     private Vector3 velocity;
     private float pitch;
+    private Vector3 cameraFollowVelocity;
 
     private void Awake()
     {
@@ -49,6 +64,12 @@ public class SimpleCharacterController : MonoBehaviour
         if (cameraRoot == null && Camera.main != null)
         {
             cameraRoot = Camera.main.transform;
+        }
+
+        if (cameraRoot != null && useThirdPersonCamera)
+        {
+            Quaternion cameraRotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            cameraRoot.position = transform.position + cameraRotation * thirdPersonOffset;
         }
 
         Cursor.lockState = CursorLockMode.Locked;
@@ -73,7 +94,19 @@ public class SimpleCharacterController : MonoBehaviour
 
         if (cameraRoot != null)
         {
-            cameraRoot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+            if (useThirdPersonCamera)
+            {
+                Quaternion cameraRotation = Quaternion.Euler(pitch, transform.eulerAngles.y, 0f);
+                Vector3 targetPosition = transform.position + cameraRotation * thirdPersonOffset;
+                cameraRoot.position = Vector3.SmoothDamp(cameraRoot.position, targetPosition, ref cameraFollowVelocity, cameraFollowSmoothTime);
+
+                Vector3 lookTarget = transform.position + Vector3.up * thirdPersonLookHeight;
+                cameraRoot.rotation = Quaternion.LookRotation(lookTarget - cameraRoot.position, Vector3.up);
+            }
+            else
+            {
+                cameraRoot.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+            }
         }
     }
 
