@@ -48,6 +48,16 @@ public class SimpleCharacterController : MonoBehaviour
     [Tooltip("Smooth time for camera follow (seconds).")]
     [SerializeField] private float cameraFollowSmoothTime = 0.08f;
 
+    [Header("Animation")]
+    [Tooltip("Animator that controls the character's animations.")]
+    [SerializeField] private Animator animator;
+
+    [Tooltip("Float parameter used to drive locomotion speed (e.g. a blend tree).")]
+    [SerializeField] private string speedParameter = "Speed";
+
+    [Tooltip("Damping for smoothing the speed parameter updates.")]
+    [SerializeField] private float speedDampTime = 0.1f;
+
     [Header("Input")]
     [SerializeField] private KeyCode runKey = KeyCode.LeftShift;
     [SerializeField] private KeyCode jumpKey = KeyCode.Space;
@@ -60,6 +70,11 @@ public class SimpleCharacterController : MonoBehaviour
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
+
+        if (animator == null)
+        {
+            animator = GetComponentInChildren<Animator>();
+        }
 
         if (cameraRoot == null && Camera.main != null)
         {
@@ -138,5 +153,19 @@ public class SimpleCharacterController : MonoBehaviour
         }
 
         controller.Move(velocity * Time.deltaTime);
+
+        UpdateAnimation();
+    }
+
+    private void UpdateAnimation()
+    {
+        if (animator == null || !animator.isActiveAndEnabled)
+        {
+            return;
+        }
+
+        Vector3 planarVelocity = new Vector3(controller.velocity.x, 0f, controller.velocity.z);
+        float speed = planarVelocity.magnitude;
+        animator.SetFloat(speedParameter, speed, speedDampTime, Time.deltaTime);
     }
 }
